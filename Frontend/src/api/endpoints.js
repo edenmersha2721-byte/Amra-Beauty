@@ -23,10 +23,19 @@ export const categoryApi = {
   remove: (id) => api.delete(`/categories/${id}`),
 };
 
+export const subcategoryApi = {
+  list: (params) => api.get('/subcategories', { params }),
+  create: (data) => api.post('/subcategories', data),
+  remove: (id) => api.delete(`/subcategories/${id}`),
+};
+
 export const appointmentApi = {
   create: (data) => api.post('/appointments', data),
   mine: (params) => api.get('/appointments/mine', { params }),
   cancel: (id) => api.put(`/appointments/${id}/cancel`),
+  reschedule: (id, data) => api.put(`/appointments/${id}/reschedule`, data),
+  approveReschedule: (id) => api.put(`/appointments/${id}/reschedule/approve`),
+  rejectReschedule: (id) => api.put(`/appointments/${id}/reschedule/reject`),
   list: (params) => api.get('/appointments', { params }),
   updateStatus: (id, status) => api.put(`/appointments/${id}/status`, { status }),
 };

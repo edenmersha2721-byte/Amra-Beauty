@@ -6,7 +6,7 @@ import SectionHeading from '../common/SectionHeading.jsx';
 import ServiceCard from '../common/ServiceCard.jsx';
 import Reveal from '../common/Reveal.jsx';
 import Loader from '../common/Loader.jsx';
-import { serviceApi, categoryApi } from '../../api/endpoints.js';
+import { serviceApi, categoryApi, subcategoryApi } from '../../api/endpoints.js';
 
 const CAT_ICON = {
   all: LayoutGrid,
@@ -16,32 +16,52 @@ const CAT_ICON = {
   facial: Sparkles,
   nails: Brush,
   makeup: Brush,
-  waxing: Droplets,
   'skin-care': Leaf,
 };
 
 export default function ServicesSection() {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [active, setActive] = useState('all');
+  const [activeSub, setActiveSub] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([serviceApi.list({ active: 'true' }), categoryApi.list({ active: 'true' })])
-      .then(([svc, cat]) => {
+    Promise.all([
+      serviceApi.list({ active: 'true' }),
+      categoryApi.list({ active: 'true' }),
+      subcategoryApi.list({ active: 'true' }),
+    ])
+      .then(([svc, cat, sub]) => {
         setServices(svc.data.data);
         setCategories(cat.data.data.filter((c) => Number(c.service_count) > 0));
+        setSubcategories(sub.data.data);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = useMemo(() => {
-    const list = active === 'all' ? services : services.filter((s) => s.category_slug === active);
-    return list.slice(0, 6);
-  }, [services, active]);
-
   const tabs = [{ slug: 'all', name: 'All Services' }, ...categories];
+
+  // Subcategories belonging to the currently selected category
+  const activeCatObj = categories.find((c) => c.slug === active);
+  const subs = activeCatObj
+    ? subcategories.filter((sc) => sc.category_id === activeCatObj.id)
+    : [];
+
+  const selectCategory = (slug) => {
+    setActive(slug);
+    setActiveSub(null);
+  };
+
+  const filtered = useMemo(() => {
+    let list = active === 'all' ? services : services.filter((s) => s.category_slug === active);
+    if (active !== 'all' && activeSub) {
+      list = list.filter((s) => s.subcategory_slug === activeSub);
+    }
+    return list.slice(0, 6);
+  }, [services, active, activeSub]);
 
   return (
     <section id="services" className="relative flex min-h-screen items-center overflow-hidden bg-ink py-24">
@@ -61,7 +81,7 @@ export default function ServicesSection() {
             return (
               <button
                 key={c.slug}
-                onClick={() => setActive(c.slug)}
+                onClick={() => selectCategory(c.slug)}
                 className={`group flex w-24 flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-center transition-all duration-300 ${
                   isActive
                     ? 'border-gold/70 bg-gold/10 shadow-gold'
@@ -83,9 +103,41 @@ export default function ServicesSection() {
           })}
         </Reveal>
 
+        {/* Subcategory selector — appears when the chosen category has subcategories */}
+        {subs.length > 0 && (
+          <Reveal className="mt-12 text-center">
+            <p className="eyebrow">{activeCatObj.name} Services</p>
+            <h3 className="mt-2 font-serif text-3xl font-semibold text-cream md:text-4xl">
+              Choose Your <span className="gold-text">{activeCatObj.name}</span> Style
+            </h3>
+            <div className="mx-auto mt-3 h-px w-16 bg-gradient-to-r from-transparent via-gold to-transparent" />
+            <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+              <button
+                onClick={() => setActiveSub(null)}
+                className={`rounded-full border px-5 py-2 text-sm font-medium transition ${
+                  !activeSub ? 'border-gold/70 bg-gold/15 text-gold' : 'border-line text-cream/70 hover:border-gold/40'
+                }`}
+              >
+                All
+              </button>
+              {subs.map((sc) => (
+                <button
+                  key={sc.id}
+                  onClick={() => setActiveSub(sc.slug)}
+                  className={`rounded-full border px-5 py-2 text-sm font-medium transition ${
+                    activeSub === sc.slug ? 'border-gold/70 bg-gold/15 text-gold' : 'border-line text-cream/70 hover:border-gold/40'
+                  }`}
+                >
+                  {sc.name}
+                </button>
+              ))}
+            </div>
+          </Reveal>
+        )}
+
         {loading ? (
           <Loader label="Loading services…" />
-        ) : (
+        ) : filtered.length ? (
           <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((s, i) => (
               <Reveal key={s.id} delay={i * 0.05}>
@@ -93,6 +145,8 @@ export default function ServicesSection() {
               </Reveal>
             ))}
           </div>
+        ) : (
+          <p className="mt-12 text-center text-muted">No services in this selection yet.</p>
         )}
       </div>
     </section>

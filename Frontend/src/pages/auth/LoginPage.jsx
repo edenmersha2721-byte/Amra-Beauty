@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
 import AuthShell from './AuthShell.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -28,10 +28,13 @@ export default function LoginPage() {
     }
   };
 
+  const forgotPassword = () =>
+    toast('Please contact the salon to reset your password.', { icon: '🔑' });
+
   return (
     <AuthShell
-      title="Welcome Back"
-      subtitle="Sign in to book appointments and manage your visits."
+      title={<>Welcome <span className="gold-text">Back</span></>}
+      subtitle="Sign in to access your account"
       footer={
         <>
           Don’t have an account?{' '}
@@ -43,37 +46,49 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
-          <label className="label">Email</label>
-          <input
-            type="email"
-            className="input"
-            placeholder="you@example.com"
-            {...register('email', { required: 'Email is required' })}
-          />
-          {errors.email && <p className="mt-1 text-xs text-rose-500">{errors.email.message}</p>}
+          <label className="label">Email Address</label>
+          <div className="relative">
+            <Mail size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              type="email"
+              className="input pl-11"
+              placeholder="Enter your email address"
+              {...register('email', { required: 'Email is required' })}
+            />
+          </div>
+          {errors.email && <p className="mt-1 text-xs text-rose-400">{errors.email.message}</p>}
         </div>
+
         <div>
           <label className="label">Password</label>
           <div className="relative">
+            <Lock size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
             <input
               type={show ? 'text' : 'password'}
-              className="input pr-11"
-              placeholder="••••••••"
+              className="input px-11"
+              placeholder="Enter your password"
               {...register('password', { required: 'Password is required' })}
             />
             <button
               type="button"
               onClick={() => setShow((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-cream"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-cream"
+              aria-label={show ? 'Hide password' : 'Show password'}
             >
               {show ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          {errors.password && <p className="mt-1 text-xs text-rose-500">{errors.password.message}</p>}
+          {errors.password && <p className="mt-1 text-xs text-rose-400">{errors.password.message}</p>}
+        </div>
+
+        <div className="flex justify-end">
+          <button type="button" onClick={forgotPassword} className="text-sm text-gold hover:underline">
+            Forgot Password?
+          </button>
         </div>
 
         <button disabled={loading} className="btn-gold w-full">
-          {loading ? 'Signing in…' : 'Sign In'} <LogIn size={16} />
+          {loading ? 'Signing in…' : 'Sign In'} <ArrowRight size={16} />
         </button>
       </form>
 

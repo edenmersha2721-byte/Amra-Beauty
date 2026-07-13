@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes.js';
 import categoryRoutes from './category.routes.js';
+import subcategoryRoutes from './subcategory.routes.js';
 import serviceRoutes from './service.routes.js';
 import appointmentRoutes from './appointment.routes.js';
 import customerRoutes from './customer.routes.js';
@@ -17,6 +18,7 @@ router.get('/health', (req, res) => res.json({ success: true, status: 'ok' }));
 
 router.use('/auth', authRoutes);
 router.use('/categories', categoryRoutes);
+router.use('/subcategories', subcategoryRoutes);
 router.use('/services', serviceRoutes);
 router.use('/appointments', appointmentRoutes);
 router.use('/customers', customerRoutes);

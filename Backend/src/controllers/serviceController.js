@@ -4,9 +4,12 @@ import { ApiError } from '../utils/ApiError.js';
 import { requireFields, toBool } from '../utils/validate.js';
 
 const SELECT_WITH_CATEGORY = `
-  SELECT s.*, c.name AS category_name, c.slug AS category_slug
+  SELECT s.*,
+         c.name AS category_name, c.slug AS category_slug,
+         sc.name AS subcategory_name, sc.slug AS subcategory_slug
   FROM services s
   LEFT JOIN categories c ON c.id = s.category_id
+  LEFT JOIN subcategories sc ON sc.id = s.subcategory_id
 `;
 
 // GET /api/services  ?category=slug&featured=true&active=true&search=
@@ -43,14 +46,15 @@ export const getService = asyncHandler(async (req, res) => {
 // POST /api/services (admin)
 export const createService = asyncHandler(async (req, res) => {
   requireFields(req.body, ['name', 'price', 'duration_minutes']);
-  const { name, description, category_id, price, duration_minutes, image_url, image_pos_y, image_zoom } = req.body;
+  const { name, description, category_id, subcategory_id, price, duration_minutes, image_url, image_pos_y, image_zoom } = req.body;
   const { rows } = await query(
-    `INSERT INTO services (name, description, category_id, price, duration_minutes, image_url, image_pos_y, image_zoom, is_featured, is_active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    `INSERT INTO services (name, description, category_id, subcategory_id, price, duration_minutes, image_url, image_pos_y, image_zoom, is_featured, is_active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
     [
       name.trim(),
       description || null,
       category_id || null,
+      subcategory_id || null,
       Number(price),
       Number(duration_minutes),
       image_url || null,
@@ -66,6 +70,9 @@ export const createService = asyncHandler(async (req, res) => {
 // PUT /api/services/:id (admin)
 export const updateService = asyncHandler(async (req, res) => {
   const { name, description, category_id, price, duration_minutes, image_url, image_pos_y, image_zoom } = req.body;
+  // subcategory_id is set directly (so it can also be cleared) when present in the body.
+  const hasSub = Object.prototype.hasOwnProperty.call(req.body, 'subcategory_id');
+  const subId = req.body.subcategory_id ? Number(req.body.subcategory_id) : null;
   const { rows } = await query(
     `UPDATE services SET
        name = COALESCE($1, name),
@@ -78,8 +85,9 @@ export const updateService = asyncHandler(async (req, res) => {
        is_active = COALESCE($8, is_active),
        image_pos_y = COALESCE($9, image_pos_y),
        image_zoom = COALESCE($10, image_zoom),
+       subcategory_id = CASE WHEN $11 THEN $12 ELSE subcategory_id END,
        updated_at = NOW()
-     WHERE id = $11 RETURNING *`,
+     WHERE id = $13 RETURNING *`,
     [
       name || null,
       description ?? null,
@@ -91,6 +99,8 @@ export const updateService = asyncHandler(async (req, res) => {
       toBool(req.body.is_active) ?? null,
       image_pos_y != null && image_pos_y !== '' ? Number(image_pos_y) : null,
       image_zoom != null && image_zoom !== '' ? Number(image_zoom) : null,
+      hasSub,
+      subId,
       req.params.id,
     ]
   );

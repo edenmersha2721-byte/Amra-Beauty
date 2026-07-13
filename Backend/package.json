@@ -8,6 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "db:migrate": "node src/db/migrate.js",
+    "db:migrate:subcategories": "node src/db/migrate_subcategories.js",
+    "db:migrate:reschedule": "node src/db/migrate_reschedule.js",
     "db:seed": "node src/db/seed.js",
     "db:reset": "node src/db/migrate.js && node src/db/seed.js"
   },

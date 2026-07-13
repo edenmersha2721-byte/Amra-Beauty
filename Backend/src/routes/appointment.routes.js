@@ -3,6 +3,9 @@ import {
   createAppointment,
   myAppointments,
   cancelMyAppointment,
+  requestReschedule,
+  approveReschedule,
+  rejectReschedule,
   listAppointments,
   updateAppointmentStatus,
   getAppointment,
@@ -17,10 +20,13 @@ router.post('/', optionalAuth, createAppointment);
 // Customer
 router.get('/mine', protect, myAppointments);
 router.put('/:id/cancel', protect, cancelMyAppointment);
+router.put('/:id/reschedule', protect, requestReschedule);
 
 // Admin
 router.get('/', protect, requireAdmin, listAppointments);
 router.get('/:id', protect, requireAdmin, getAppointment);
 router.put('/:id/status', protect, requireAdmin, updateAppointmentStatus);
+router.put('/:id/reschedule/approve', protect, requireAdmin, approveReschedule);
+router.put('/:id/reschedule/reject', protect, requireAdmin, rejectReschedule);
 
 export default router;

@@ -4,15 +4,16 @@ import { Plus, Pencil, Trash2, Search, Star } from 'lucide-react';
 import Loader from '../../components/common/Loader.jsx';
 import Modal from '../../components/common/Modal.jsx';
 import ImageInput from '../../components/common/ImageInput.jsx';
-import { serviceApi, categoryApi } from '../../api/endpoints.js';
+import { serviceApi, categoryApi, subcategoryApi } from '../../api/endpoints.js';
 import { currency, duration } from '../../utils/format.js';
 import { assetUrl } from '../../api/client.js';
 
-const empty = { name: '', description: '', category_id: '', price: '', duration_minutes: '', image_url: '', image_pos_y: 50, image_zoom: 1, is_featured: false, is_active: true };
+const empty = { name: '', description: '', category_id: '', subcategory_id: '', price: '', duration_minutes: '', image_url: '', image_pos_y: 50, image_zoom: 1, is_featured: false, is_active: true };
 
 export default function AdminServices() {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
@@ -22,10 +23,11 @@ export default function AdminServices() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([serviceApi.list(), categoryApi.list()])
-      .then(([s, c]) => {
+    Promise.all([serviceApi.list(), categoryApi.list(), subcategoryApi.list()])
+      .then(([s, c, sc]) => {
         setServices(s.data.data);
         setCategories(c.data.data);
+        setSubcategories(sc.data.data);
       })
       .finally(() => setLoading(false));
   };
@@ -36,12 +38,15 @@ export default function AdminServices() {
     setEditing(s.id);
     setForm({
       name: s.name, description: s.description || '', category_id: s.category_id || '',
+      subcategory_id: s.subcategory_id || '',
       price: s.price, duration_minutes: s.duration_minutes, image_url: s.image_url || '',
       image_pos_y: s.image_pos_y ?? 50, image_zoom: Number(s.image_zoom) || 1,
       is_featured: s.is_featured, is_active: s.is_active,
     });
     setModal(true);
   };
+
+  const formSubs = subcategories.filter((sc) => sc.category_id === Number(form.category_id));
 
   const save = async (e) => {
     e.preventDefault();
@@ -141,12 +146,24 @@ export default function AdminServices() {
           </div>
           <div>
             <label className="label">Category</label>
-            <select className="input" value={form.category_id} onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}>
+            <select className="input" value={form.category_id} onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value, subcategory_id: '' }))}>
               <option value="">Select…</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
+            <label className="label">Subcategory {formSubs.length === 0 && <span className="text-muted">(none for this category)</span>}</label>
+            <select
+              className="input"
+              value={form.subcategory_id}
+              onChange={(e) => setForm((f) => ({ ...f, subcategory_id: e.target.value }))}
+              disabled={!form.category_id || formSubs.length === 0}
+            >
+              <option value="">None</option>
+              {formSubs.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
             <ImageInput
               label="Service Image"
               value={form.image_url}

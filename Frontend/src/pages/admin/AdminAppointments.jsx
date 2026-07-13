@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Search, CheckCircle2, XCircle, Check, Phone, Mail } from 'lucide-react';
+import { Search, CheckCircle2, XCircle, Check, Phone, Mail, CalendarClock } from 'lucide-react';
 import Loader from '../../components/common/Loader.jsx';
 import { appointmentApi } from '../../api/endpoints.js';
 import { currency, formatDate, formatTime, statusColor } from '../../utils/format.js';
@@ -32,6 +32,19 @@ export default function AdminAppointments() {
     }
   };
 
+  const resolveReschedule = async (id, action) => {
+    try {
+      if (action === 'approve') await appointmentApi.approveReschedule(id);
+      else await appointmentApi.rejectReschedule(id);
+      toast.success(action === 'approve' ? 'Reschedule approved' : 'Reschedule rejected');
+      load();
+    } catch (e) {
+      toast.error(e.friendlyMessage || 'Update failed');
+    }
+  };
+
+  const rescheduleCount = items.filter((a) => a.reschedule_date).length;
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -45,6 +58,13 @@ export default function AdminAppointments() {
           <input className="input pl-9" placeholder="Search name, email, service…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </form>
       </div>
+
+      {rescheduleCount > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-gold/25 bg-gold/10 px-5 py-3 text-sm text-cream/90">
+          <CalendarClock size={18} className="text-gold" />
+          <strong className="text-gold">{rescheduleCount}</strong> reschedule request{rescheduleCount > 1 ? 's' : ''} awaiting your approval.
+        </div>
+      )}
 
       {loading ? <Loader /> : items.length === 0 ? (
         <div className="card py-16 text-center text-muted">No appointments found.</div>
@@ -63,18 +83,38 @@ export default function AdminAppointments() {
             </thead>
             <tbody>
               {items.map((a) => (
-                <tr key={a.id} className="border-t border-line/60 align-top">
+                <tr key={a.id} className={`border-t border-line/60 align-top ${a.reschedule_date ? 'bg-gold/[0.06]' : ''}`}>
                   <td className="px-4 py-3">
                     <p className="font-medium text-cream">{a.customer_name}</p>
                     <p className="flex items-center gap-1 text-xs text-muted"><Mail size={11} /> {a.customer_email}</p>
                     {a.customer_phone && <p className="flex items-center gap-1 text-xs text-muted"><Phone size={11} /> {a.customer_phone}</p>}
                   </td>
                   <td className="px-4 py-3 text-muted">{a.service_name || a.service_name_snapshot}</td>
-                  <td className="px-4 py-3 text-muted">{formatDate(a.appointment_date)}<br />{formatTime(a.appointment_time)}</td>
+                  <td className="px-4 py-3 text-muted">
+                    {formatDate(a.appointment_date)}<br />{formatTime(a.appointment_time)}
+                    {a.reschedule_date && (
+                      <span className="mt-1.5 flex items-center gap-1 text-xs font-medium text-gold">
+                        <CalendarClock size={12} /> → {formatDate(a.reschedule_date)} {formatTime(a.reschedule_time)}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-medium text-gold">{currency(a.price_snapshot)}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusColor(a.status)}`}>{a.status}</span></td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusColor(a.status)}`}>{a.status}</span>
+                    {a.reschedule_date && (
+                      <span className="mt-1.5 block rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-center text-[0.65rem] font-medium text-gold">
+                        Reschedule requested
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap justify-end gap-1.5">
+                      {a.reschedule_date && (
+                        <>
+                          <button onClick={() => resolveReschedule(a.id, 'approve')} title="Approve reschedule" className="flex items-center gap-1 rounded-lg bg-gold/15 px-2.5 py-2 text-xs font-medium text-gold hover:bg-gold/25"><CalendarClock size={14} /> Approve</button>
+                          <button onClick={() => resolveReschedule(a.id, 'reject')} title="Reject reschedule" className="flex items-center gap-1 rounded-lg bg-rose-500/15 px-2.5 py-2 text-xs font-medium text-rose-300 hover:bg-rose-500/25"><XCircle size={14} /> Reject</button>
+                        </>
+                      )}
                       {a.status === 'pending' && (
                         <button onClick={() => setStatusOf(a.id, 'confirmed')} title="Confirm" className="rounded-lg bg-blue-500/15 p-2 text-blue-300 hover:bg-blue-500/25"><Check size={15} /></button>
                       )}

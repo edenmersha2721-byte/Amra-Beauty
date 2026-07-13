@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS appointments CASCADE;
 DROP TABLE IF EXISTS gallery CASCADE;
 DROP TABLE IF EXISTS promotions CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
+DROP TABLE IF EXISTS subcategories CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
@@ -56,11 +57,26 @@ CREATE TABLE categories (
 );
 
 -- ------------------------------------------------------------
+--  Subcategories (a level under categories, e.g. Makeup → Bridal)
+-- ------------------------------------------------------------
+CREATE TABLE subcategories (
+  id          SERIAL PRIMARY KEY,
+  category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  name        VARCHAR(80) NOT NULL,
+  slug        VARCHAR(90) NOT NULL,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (category_id, slug)
+);
+CREATE INDEX idx_subcategories_category ON subcategories(category_id);
+
+-- ------------------------------------------------------------
 --  Services
 -- ------------------------------------------------------------
 CREATE TABLE services (
   id               SERIAL PRIMARY KEY,
   category_id      INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+  subcategory_id   INTEGER REFERENCES subcategories(id) ON DELETE SET NULL,
   name             VARCHAR(120) NOT NULL,
   description      TEXT,
   price            NUMERIC(10,2) NOT NULL DEFAULT 0,
@@ -75,6 +91,7 @@ CREATE TABLE services (
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_services_category ON services(category_id);
+CREATE INDEX idx_services_subcategory ON services(subcategory_id);
 CREATE INDEX idx_services_featured ON services(is_featured);
 
 -- ------------------------------------------------------------
@@ -88,6 +105,9 @@ CREATE TABLE appointments (
   appointment_time TIME NOT NULL,
   notes            TEXT,
   status           appointment_status NOT NULL DEFAULT 'pending',
+  -- customer-requested new slot awaiting admin approval (NULL = none pending)
+  reschedule_date  DATE,
+  reschedule_time  TIME,
   -- snapshot of price/name at booking time (services may change later)
   price_snapshot   NUMERIC(10,2),
   service_name_snapshot VARCHAR(120),

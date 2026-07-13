@@ -114,6 +114,69 @@ export const cancelMyAppointment = asyncHandler(async (req, res) => {
   res.json({ success: true, data: updated.rows[0] });
 });
 
+// PUT /api/appointments/:id/reschedule  (customer requests a new slot)
+export const requestReschedule = asyncHandler(async (req, res) => {
+  requireFields(req.body, ['appointment_date', 'appointment_time']);
+  const { appointment_date, appointment_time } = req.body;
+
+  const { rows } = await query(
+    'SELECT * FROM appointments WHERE id = $1 AND customer_id = $2',
+    [req.params.id, req.user.id]
+  );
+  const appt = rows[0];
+  if (!appt) throw ApiError.notFound('Appointment not found');
+  if (['completed', 'cancelled'].includes(appt.status)) {
+    throw ApiError.badRequest(`Cannot reschedule a ${appt.status} appointment`);
+  }
+
+  const when = new Date(`${appointment_date}T${appointment_time}`);
+  if (isNaN(when.getTime())) throw ApiError.badRequest('Invalid date or time');
+  if (when.getTime() < Date.now()) throw ApiError.badRequest('The new time cannot be in the past');
+
+  const updated = await query(
+    `UPDATE appointments SET reschedule_date = $1, reschedule_time = $2, updated_at = NOW()
+     WHERE id = $3 RETURNING *`,
+    [appointment_date, appointment_time, req.params.id]
+  );
+  res.json({ success: true, data: updated.rows[0] });
+});
+
+// PUT /api/appointments/:id/reschedule/approve  (admin) — apply requested slot
+export const approveReschedule = asyncHandler(async (req, res) => {
+  const { rows } = await query('SELECT * FROM appointments WHERE id = $1', [req.params.id]);
+  const appt = rows[0];
+  if (!appt) throw ApiError.notFound('Appointment not found');
+  if (!appt.reschedule_date) throw ApiError.badRequest('No reschedule request to approve');
+
+  const updated = await query(
+    `UPDATE appointments SET
+       appointment_date = reschedule_date,
+       appointment_time = reschedule_time,
+       reschedule_date = NULL,
+       reschedule_time = NULL,
+       status = 'confirmed',
+       updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id]
+  );
+  res.json({ success: true, data: updated.rows[0] });
+});
+
+// PUT /api/appointments/:id/reschedule/reject  (admin) — keep original slot
+export const rejectReschedule = asyncHandler(async (req, res) => {
+  const { rows } = await query('SELECT * FROM appointments WHERE id = $1', [req.params.id]);
+  const appt = rows[0];
+  if (!appt) throw ApiError.notFound('Appointment not found');
+  if (!appt.reschedule_date) throw ApiError.badRequest('No reschedule request to reject');
+
+  const updated = await query(
+    `UPDATE appointments SET reschedule_date = NULL, reschedule_time = NULL, updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id]
+  );
+  res.json({ success: true, data: updated.rows[0] });
+});
+
 // ---------- Admin ----------
 
 // GET /api/appointments  (admin) ?status=&search=&date=
